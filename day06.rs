@@ -43,7 +43,7 @@ K)L
 K)YOU
 I)SAN");
     
-    let filename = "input6.txt";
+    let filename = "input06.txt";
     let reader = BufReader::new(std::fs::File::open(filename)?);
     let mut orbits = HashMap::new();
     for line in reader.lines() {

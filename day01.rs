@@ -12,7 +12,7 @@ fn fuel(mass : i32) -> i32 {
 }
 
 fn main() {
-    let filename = "input1.txt";
+    let filename = "input01.txt";
     // Open the file in read-only mode (ignoring errors).
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
