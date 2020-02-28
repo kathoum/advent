@@ -101,7 +101,7 @@ fn run_program(prog: &mut [i32]) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let filename = "input5.txt";
+    let filename = "input05.txt";
     let reader = BufReader::new(File::open(filename)?);
     
     let mut prog : Vec<_> = reader

@@ -26,7 +26,7 @@ impl Image for [u8] {
 }
 
 fn main() -> std::io::Result<()> {
-    let mut input = std::fs::File::open("input8.txt")?;
+    let mut input = std::fs::File::open("input08.txt")?;
     const W: usize = 25;
     const H: usize = 6;
     let mut layer = [0u8; W * H];

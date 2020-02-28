@@ -85,7 +85,7 @@ fn main() -> Result<()> {
     let text3 = "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51\nU98,R91,D20,R16,D67,R40,U7,R15,U6,R7";
     use std::io::BufRead;
     let reader = std::io::BufReader::new(text3.as_bytes());
-    let reader = std::io::BufReader::new(std::fs::File::open("input3.txt")?);
+    let reader = std::io::BufReader::new(std::fs::File::open("input03.txt")?);
     let mut knot = Vec::new();
     for line in reader.lines() {
         let mut pos: (i32, i32, i32) = (0, 0, 0);

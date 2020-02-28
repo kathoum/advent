@@ -58,7 +58,7 @@ fn result_of(noun: usize, verb: usize, prog: &[usize]) -> usize {
 }
 
 fn main() -> Result<()> {
-    let filename = "input2.txt";
+    let filename = "input02.txt";
     let reader = BufReader::new(File::open(filename)?);
     
     let prog : Vec<_> = reader
