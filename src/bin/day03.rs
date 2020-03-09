@@ -5,7 +5,7 @@ impl std::fmt::Display for MyError {
         write!(f, "Error: {}", self.0)
     }
 }
-fn myerr(s: &str) -> MyError {
+fn _myerr(s: &str) -> MyError {
     MyError(s.to_string())
 }
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -38,7 +38,7 @@ impl std::str::FromStr for Step {
     }
 }
 
-fn parse_csv(buf: impl std::io::Read) -> std::io::Result<Vec<Vec<String>>> {
+fn _parse_csv(buf: impl std::io::Read) -> std::io::Result<Vec<Vec<String>>> {
     use std::io::BufRead;
     let reader = std::io::BufReader::new(buf);
     reader.lines().map(|maybe_line|
@@ -78,14 +78,14 @@ fn get_trail(pos: &mut (i32, i32, i32), step: Step) -> Vec<(i32, i32, i32)> {
 }
 
 fn main() -> Result<()> {
-    let text1 = "R8,U5,L5,D3\nU7,R6,D4,L4";
-    let text2 = concat!(
+    let _text = "R8,U5,L5,D3\nU7,R6,D4,L4";
+    let _text = concat!(
         "R75,D30,R83,U83,L12,D49,R71,U7,L72\n",
         "U62,R66,U55,R34,D71,R55,D58,R83");
-    let text3 = "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51\nU98,R91,D20,R16,D67,R40,U7,R15,U6,R7";
+    let _text = "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51\nU98,R91,D20,R16,D67,R40,U7,R15,U6,R7";
+    let _reader = std::io::BufReader::new(_text.as_bytes());
+    let reader = std::io::Cursor::new(include_str!("input03.txt"));
     use std::io::BufRead;
-    let reader = std::io::BufReader::new(text3.as_bytes());
-    let reader = std::io::BufReader::new(std::fs::File::open("input03.txt")?);
     let mut knot = Vec::new();
     for line in reader.lines() {
         let mut pos: (i32, i32, i32) = (0, 0, 0);
@@ -97,22 +97,22 @@ fn main() -> Result<()> {
         knot.push(touched);
     }
     use std::collections::{HashMap, HashSet};
-    let mut cellsA: HashMap<(i32, i32), i32> = HashMap::new();
+    let mut cells_a: HashMap<(i32, i32), i32> = HashMap::new();
     for c in &knot[0] {
-        cellsA.entry((c.0, c.1)).or_insert(c.2);
+        cells_a.entry((c.0, c.1)).or_insert(c.2);
     }
-    let mut cellsB = HashMap::new();
+    let mut cells_b = HashMap::new();
     for c in &knot[1] {
-        cellsB.entry((c.0, c.1)).or_insert(c.2);
+        cells_b.entry((c.0, c.1)).or_insert(c.2);
     }
     //println!("{:?}", cellsA);
 
-    let keysA: HashSet<(i32, i32)> = cellsA.keys().cloned().collect();
-    let keysB: HashSet<(i32, i32)> = cellsB.keys().cloned().collect();
+    let keys_a: HashSet<(i32, i32)> = cells_a.keys().cloned().collect();
+    let keys_b: HashSet<(i32, i32)> = cells_b.keys().cloned().collect();
 
-    let tangles = keysA.intersection(&keysB);
+    let tangles = keys_a.intersection(&keys_b);
     println!("{:?}", tangles);
-    let d = |x: (i32, i32)| cellsA.get(&x).unwrap() + cellsB.get(&x).unwrap();
+    let d = |x: (i32, i32)| cells_a.get(&x).unwrap() + cells_b.get(&x).unwrap();
     let closest = tangles.min_by_key(|x| d(**x));
     println!("{:?} {}", closest, d(*closest.unwrap()));
     Ok(())

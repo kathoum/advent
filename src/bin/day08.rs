@@ -1,4 +1,4 @@
-use std::io::{Read, Seek};
+use std::io::{Cursor,Read,Seek};
 
 trait Image {
     fn count_equal(&self, val: u8) -> usize;
@@ -26,7 +26,7 @@ impl Image for [u8] {
 }
 
 fn main() -> std::io::Result<()> {
-    let mut input = std::fs::File::open("input08.txt")?;
+    let mut input = Cursor::new(include_str!("input08.txt"));
     const W: usize = 25;
     const H: usize = 6;
     let mut layer = [0u8; W * H];

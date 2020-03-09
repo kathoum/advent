@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead};
+use std::io::{BufRead,Cursor};
 use std::error::Error;
 use std::convert::{TryFrom,TryInto};
 
@@ -195,8 +194,7 @@ impl std::fmt::Display for HullState {
 }
 
 fn main() -> Result<()> {
-    let filename = "input11.txt";
-    let reader = BufReader::new(File::open(filename)?);
+    let reader = Cursor::new(include_str!("input11.txt"));
     let mut prog : Vec<_> = reader
         .split(b',')
         .map(parse_int)

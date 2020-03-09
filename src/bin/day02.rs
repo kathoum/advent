@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead};
+use std::io::{BufRead,Cursor};
 use std::error::Error;
 
 #[derive(Debug)] struct MyError(String);
@@ -58,8 +57,7 @@ fn result_of(noun: usize, verb: usize, prog: &[usize]) -> usize {
 }
 
 fn main() -> Result<()> {
-    let filename = "input02.txt";
-    let reader = BufReader::new(File::open(filename)?);
+    let reader = Cursor::new(include_str!("input02.txt"));
     
     let prog : Vec<_> = reader
         .split(b',')

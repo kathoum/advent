@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead,Write};
+use std::io::{BufRead,Cursor,Write};
 use std::error::Error;
 use std::convert::TryFrom;
 
@@ -101,8 +100,7 @@ fn run_program(prog: &mut [i32]) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let filename = "input05.txt";
-    let reader = BufReader::new(File::open(filename)?);
+    let reader = Cursor::new(include_str!("input05.txt"));
     
     let mut prog : Vec<_> = reader
         .split(b',')

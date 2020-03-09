@@ -1,4 +1,4 @@
-use std::io::{BufRead,BufReader};
+use std::io::{BufRead,Cursor};
 use std::collections::HashMap;
 
 fn indirect_orbits(body: &str, orbits: &HashMap<String, String>) -> i32 {
@@ -28,7 +28,7 @@ fn distance(body1: &str, body2: &str, orbits: &HashMap<String, String>) -> usize
 }
 
 fn main() -> std::io::Result<()> {
-    let _reader = std::io::Cursor::new(
+    let _reader = Cursor::new(
 "COM)B
 B)C
 C)D
@@ -43,8 +43,7 @@ K)L
 K)YOU
 I)SAN");
     
-    let filename = "input06.txt";
-    let reader = BufReader::new(std::fs::File::open(filename)?);
+    let reader = Cursor::new(include_str!("input06.txt"));
     let mut orbits = HashMap::new();
     for line in reader.lines() {
         let line = line.unwrap();

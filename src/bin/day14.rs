@@ -146,7 +146,6 @@ fn main() {
         7 XCVML => 6 RJRHP
         5 BHXH, 4 VRPVC => 5 LTCX"));
 
-    let input = "input14.txt";
-    let reader = std::io::BufReader::new(std::fs::File::open(input).unwrap());
+    let reader = std::io::Cursor::new(include_str!("input14.txt"));
     run(reader);
 }

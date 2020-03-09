@@ -96,10 +96,7 @@ fn main() {
     test_long("02935109699940807407585447034323", "78725270");
     test_long("03081770884921959731165446850517", "53553731");
 
-    use std::io::Read;
-    let mut f = std::fs::File::open("input16.txt").unwrap();
-    let mut s: String = Default::default();
-    f.read_to_string(&mut s).unwrap();
+    let s = include_str!("input16.txt");
     println!("{}", run(&s, 100));
     let o = run_long(&s);
     println!("offset {} result {}", o.1, o.0);

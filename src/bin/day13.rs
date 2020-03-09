@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead,Write};
+use std::io::{BufRead,Cursor};
 use std::error::Error;
 use std::convert::{TryFrom,TryInto};
 
@@ -139,7 +138,7 @@ impl ArcadeState {
     }
     fn get(&self) -> i32 {
         println!("{}", self);
-        std::thread::sleep_ms(10);
+        std::thread::sleep(std::time::Duration::from_millis(15));
         let (Pos(ball, _), _) = self.tiles.iter().find(|tile| *tile.1 == Tile::Ball).unwrap();
         let (Pos(paddle, _), _) = self.tiles.iter().find(|tile| *tile.1 == Tile::Paddle).unwrap();
         (ball - paddle).signum()
@@ -212,8 +211,7 @@ impl std::fmt::Display for ArcadeState {
 }
 
 fn main() -> Result<()> {
-    let filename = "input13.txt";
-    let reader = BufReader::new(File::open(filename)?);
+    let reader = Cursor::new(include_str!("input13.txt"));
     let mut prog : Vec<_> = reader
         .split(b',')
         .map(parse_int)
