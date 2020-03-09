@@ -27,8 +27,7 @@ fn count_visible(f: &Field, eye: &Ast) -> usize {
 }
 
 fn main() -> std::io::Result<()> {
-    let input = std::fs::File::open("input10.txt")?;
-    let reader = std::io::BufReader::new(input);
+    let reader = std::io::Cursor::new(include_str!("input10.txt"));
 
     let _reader = std::io::Cursor::new(
 ".#..#

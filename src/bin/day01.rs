@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead};
+use std::io::{BufRead,Cursor};
 
 fn fuel(mass : i32) -> i32 {
     let mut tot = 0;
@@ -12,10 +11,7 @@ fn fuel(mass : i32) -> i32 {
 }
 
 fn main() {
-    let filename = "input01.txt";
-    // Open the file in read-only mode (ignoring errors).
-    let file = File::open(filename).unwrap();
-    let reader = BufReader::new(file);
+    let reader = Cursor::new(include_str!("input01.txt"));
 
     // Read the file line by line using the lines() iterator from std::io::BufRead.
     let mut f = 0;

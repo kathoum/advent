@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufReader,BufRead,Write};
+use std::io::{BufRead,Cursor};
 use std::error::Error;
 use std::convert::TryFrom;
 
@@ -257,8 +256,7 @@ fn find_path(tiles: &std::collections::HashMap<Pos, Tile>, from: Pos, to: Pos) -
 }
 
 fn main() -> Result<()> {
-    let filename = "input15.txt";
-    let reader = BufReader::new(File::open(filename)?);
+    let reader = Cursor::new(include_str!("input15.txt"));
     let mut prog : Vec<_> = reader
         .split(b',')
         .map(parse_int)
