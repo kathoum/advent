@@ -18,8 +18,18 @@ impl Board {
         && (0..self.size.2).contains(&index.2)
     }
 
+    fn flat_index_for(&self, index: Pos) -> usize {
+        (index.0 + self.size.0 * (index.1 + self.size.1 * index.2)) as usize
+    }
+
     fn is_true(&self, index: Pos) -> bool {
-        self.contains(index) && self[index]
+        self.contains(index) && self.data[self.flat_index_for(index)]
+    }
+
+    fn set_cube(&mut self, index: Pos, value: bool) {
+        assert_eq!(true, self.contains(index));
+        let i = self.flat_index_for(index);
+        self.data[i] = value;
     }
 
     fn count_true(&self) -> usize {
@@ -48,7 +58,7 @@ impl Board {
                 for x in 0..output.size.0 {
                     let center = (x - 1, y - 1, z - 1);
                     let c = self.count_neighbours(center);
-                    output[(x, y, z)] = c == 3 || (c == 2 && self.is_true(center));
+                    output.set_cube((x, y, z), c == 3 || (c == 2 && self.is_true(center)));
                 }
             }
         }
@@ -56,38 +66,22 @@ impl Board {
     }
 }
 
-impl std::ops::Index<Pos> for Board {
-    type Output = bool;
-    fn index(&self, index: Pos) -> &bool {
-        assert_eq!(true, self.contains(index));
-        &self.data[(index.0 + self.size.0 * (index.1 + self.size.1 * index.2)) as usize]
-    }
-}
-
-impl std::ops::IndexMut<Pos> for Board {
-    fn index_mut(&mut self, index: Pos) -> &mut bool {
-        assert_eq!(true, self.contains(index));
-        self.data.index_mut((index.0 + self.size.0 * (index.1 + self.size.1 * index.2)) as usize)
-    }
-}
-
 fn main() {
     let input = include_str!("input17.txt");
+    let board_data = input.chars().filter_map(|c|
+        match c {
+            '.' => Some(false),
+            '#' => Some(true),
+            _ => None
+        }).collect::<Vec<_>>();
 
     println!("Step One");
     let ny = input.lines().count();
     let nx = input.lines().next().unwrap().len();
     println!("Initial size: {}x{}x1", nx, ny);
     let mut board = Board::new((nx as i32, ny as i32, 1));
-    let mut i = 0;
-    for c in input.chars() {
-        match c {
-            '.' => { board.data[i] = false; i += 1 },
-            '#' => { board.data[i] = true; i += 1 },
-            _ => ()
-        }
-    }
-    assert_eq!(i, board.data.len());
+    board.data = board_data.clone();
+    assert_eq!(nx * ny, board.data.len());
 
     println!("Step 0: {} live cubes", board.count_true());
     for step in 1..=6 {
@@ -97,15 +91,7 @@ fn main() {
 
     println!("Step Two");
     let mut board = Board4::new((nx as i32, ny as i32, 1, 1));
-    let mut i = 0;
-    for c in input.chars() {
-        match c {
-            '.' => { board.data[i] = false; i += 1 },
-            '#' => { board.data[i] = true; i += 1 },
-            _ => ()
-        }
-    }
-    assert_eq!(i, board.data.len());
+    board.data = board_data.clone();
 
     println!("Step 0: {} live cubes", board.count_true());
     for step in 1..=6 {
@@ -135,8 +121,18 @@ impl Board4 {
         && (0..self.size.3).contains(&index.3)
     }
 
+    fn flat_index_for(&self, index: Pos4) -> usize {
+        (index.0 + self.size.0 * (index.1 + self.size.1 * (index.2 + self.size.2 * index.3))) as usize
+    }
+
     fn is_true(&self, index: Pos4) -> bool {
-        self.contains(index) && self[index]
+        self.contains(index) && self.data[self.flat_index_for(index)]
+    }
+
+    fn set_cube(&mut self, index: Pos4, value: bool) {
+        assert_eq!(true, self.contains(index));
+        let i = self.flat_index_for(index);
+        self.data[i] = value;
     }
 
     fn count_true(&self) -> usize {
@@ -168,26 +164,11 @@ impl Board4 {
                     for x in 0..output.size.0 {
                         let center = (x - 1, y - 1, z - 1, w - 1);
                         let c = self.count_neighbours(center);
-                        output[(x, y, z, w)] = c == 3 || (c == 2 && self.is_true(center));
+                        output.set_cube((x, y, z, w), c == 3 || (c == 2 && self.is_true(center)));
                     }
                 }
             }
         }
         output
-    }
-}
-
-impl std::ops::Index<Pos4> for Board4 {
-    type Output = bool;
-    fn index(&self, index: Pos4) -> &bool {
-        assert_eq!(true, self.contains(index));
-        &self.data[(index.0 + self.size.0 * (index.1 + self.size.1 * (index.2 + self.size.2 * index.3))) as usize]
-    }
-}
-
-impl std::ops::IndexMut<Pos4> for Board4 {
-    fn index_mut(&mut self, index: Pos4) -> &mut bool {
-        assert_eq!(true, self.contains(index));
-        self.data.index_mut((index.0 + self.size.0 * (index.1 + self.size.1 * (index.2 + self.size.2 * index.3))) as usize)
     }
 }
