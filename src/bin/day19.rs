@@ -1,77 +1,113 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::HashMap;
+
+type RuleID = i32;
+type RcRule = Rc<RefCell<Rule>>;
+
 fn main() {
     let input = include_str!("input19.txt");
 
-    let rules: std::collections::HashMap<i32, &str> = input.lines().filter_map(|s| {
-        let sep = s.find(':');
+    let rule_lines: HashMap<RuleID, &'static str> = input.lines().filter_map(|line| {
+        let sep = line.find(':');
         match sep {
             None => None,
-            Some(sep) => {
-                let (n, rule) = s.split_at(sep);
-                Some((n.parse().unwrap(), &rule[1..]))
-            }
+            Some(sep) =>
+                Some((line[..sep].parse().unwrap(), &line[(sep + 1)..]))
         }
     }).collect();
 
+    let rules: HashMap<RuleID, RcRule> = rule_lines.keys().map(|id|
+        (*id, Rc::new(RefCell::new(Rule::Placeholder)))
+    ).collect();
+
+    for (id, line) in rule_lines.iter() {
+        let rule = Rule::parse(line, &rules);
+        rules[id].replace(Rule::Alias(rule));
+    }
+
+    let messages = input.lines().filter(|&s| !s.contains(':')).collect::<Vec<_>>();
+
     println!("Part One");
-    let head_regex = format!("^{}$", to_regex("0", &rules));
-    //println!("{}", head_regex);
-    let re = regex::Regex::new(&head_regex).unwrap();
-    let count = input.lines()
-        .filter(|s| !s.contains(':'))
-        .filter(|s| re.is_match(&s))
-        //.inspect(|s| println!("{}", s))
+    let rule_zero = rules[&0].borrow();
+    let count = messages.iter()
+        .filter(|&s| rule_zero.matches(s))
         .count();
     println!("{} matching lines", count);
 
     println!("Part Two");
-    let mut rules = rules;
-    rules.insert(8, "42 +");
-    rules.insert(11, "42 ++ 31");
-    let modified_regex = format!("^{}$", to_regex("0", &rules));
-    //println!("{}", head_regex);
-    let re = regex::Regex::new(&modified_regex).unwrap();
-    let count = input.lines()
-        .filter(|s| !s.contains(':'))
-        .filter(|s| re.is_match(&s))
-        //.inspect(|s| println!("{}", s))
+    rules[&8].replace(Rule::Alias(Rule::parse("42 | 42 8", &rules)));
+    rules[&11].replace(Rule::Alias(Rule::parse("42 31 | 42 11 31", &rules)));
+    let count = messages.iter()
+        .filter(|&s| rule_zero.matches(s))
         .count();
     println!("{} matching lines", count);
 }
 
-fn to_regex(rule: &str, rules: &std::collections::HashMap<i32, &str>) -> String {
-    let rule = rule.trim();
-    if rule.starts_with('"') && rule.ends_with('"') {
-        rule.trim_matches('"').into()
-    } else if rule.contains('|') {
-        let r = rule.split('|')
-            .map(|part| to_regex(part, rules))
-            .collect::<Vec<String>>()
-            .join("|");
-        "(".to_string() + &r + &")"
-    } else if rule.ends_with('+') {
-        "((".to_string() + &to_regex(rule.trim_end_matches('+'), rules) + &")+)"
-    } else if rule.contains("++") {
-        let mut it = rule.split("++");
-        let a = &to_regex(it.next().unwrap(), rules);
-        let b = &to_regex(it.next().unwrap(), rules);
-        assert!(it.next().is_none());
-        [
-            "(",
-            a, b,
-            "|", a, "{2}", b, "{2}",
-            "|", a, "{3}", b, "{3}",
-            "|", a, "{4}", b, "{4}",
-            "|", a, "{5}", b, "{5}",
-            // stop here, the number of matches doesn't increase after 5
-            // "|", a, "{6}", b, "{6}",
-            // "|", a, "{7}", b, "{7}",
-            // "|", a, "{8}", b, "{8}",
-            // "|", a, "{9}", b, "{9}",
-            ")"
-        ].concat()
-    } else {
-        rule.split_whitespace()
-            .map(|n| to_regex(rules[&n.parse().unwrap()], rules))
-            .fold(String::new(), |x, y| x + &y)
+enum Rule {
+    Text(String),
+    Or(RcRule, RcRule),
+    Seq(RcRule, RcRule),
+    Alias(RcRule),
+    Placeholder
+}
+
+impl Rule {
+    fn parse(rule: &str, map: &HashMap<RuleID, RcRule>) -> RcRule {
+        let rule = rule.trim();
+        if rule.starts_with('"') && rule.ends_with('"') {
+            let text = rule.trim_matches('"').into();
+            Rc::new(RefCell::new(Rule::Text(text)))
+        } else if let Some(sep) = rule.find('|') {
+            let first = Rule::parse(&rule[..sep], map);
+            let second = Rule::parse(&rule[(sep + 1)..], map);
+            Rc::new(RefCell::new(Rule::Or(first, second)))
+        } else if let Some(sep) = rule.find(' ') {
+            let first = Rule::parse(&rule[..sep], map);
+            let second = Rule::parse(&rule[(sep + 1)..], map);
+            Rc::new(RefCell::new(Rule::Seq(first, second)))
+        } else {
+            let id = rule.parse::<RuleID>().unwrap();
+            map[&id].clone()
+        }
+    }
+
+    fn matches(&self, text: &str) -> bool {
+        match self {
+            Rule::Text(t) =>
+                t == text,
+            Rule::Or(a, b) =>
+                a.borrow().matches(text) || b.borrow().matches(text),
+            Rule::Seq(a, b) =>
+                a.borrow().matches_prefix(text).into_iter().any(
+                    |suffix| b.borrow().matches(suffix)),
+            Rule::Alias(a) =>
+                a.borrow().matches(text),
+            Rule::Placeholder =>
+                panic!()
+        }
+    }
+
+    fn matches_prefix<'a>(&self, text: &'a str) -> Vec<&'a str> {
+        match self {
+            Rule::Text(t) =>
+                match text.strip_prefix(t) {
+                    Some(suffix) => vec![suffix],
+                    None => Vec::new(),
+                }
+            Rule::Or(a, b) => {
+                let mut m = a.borrow().matches_prefix(text);
+                m.append(&mut b.borrow().matches_prefix(text));
+                m
+            }
+            Rule::Seq(a, b) =>
+                a.borrow().matches_prefix(text).into_iter().flat_map(
+                    |suffix| b.borrow().matches_prefix(suffix)
+                ).collect(),
+            Rule::Alias(a) =>
+                a.borrow().matches_prefix(text),
+            Rule::Placeholder =>
+                panic!()
+        }
     }
 }
