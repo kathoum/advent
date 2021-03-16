@@ -4,3 +4,4 @@ version = "0.0.2015"
 
 [dependencies]
 md5 = "0.7"
+text_io = "0.1"
