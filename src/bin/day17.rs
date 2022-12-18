@@ -1,13 +1,16 @@
 use std::fs::File;
 use std::io::{BufRead,BufReader};
+use std::collections::HashMap;
 
 struct Tetris {
     columns: [Vec<bool>; 7],
-    piece: Option<&'static [(i64,i64)]>,
-    pos: (i64,i64),
+    piece: Option<&'static [(i32,i32)]>,
+    pos: (i32,i32),
 }
+type ProfileType = u32;
+type Profile = [ProfileType; 7];
 
-const PIECES: &[&[(i64,i64)]] = &[
+const PIECES: &[&[(i32,i32)]] = &[
     /* - */ &[(0,0), (1,0), (2,0), (3,0)],
     /* + */ &[(1,0), (0,1), (1,1), (2,1), (1,2)],
     /* L */ &[(0,0), (1,0), (2,0), (2,1), (2,2)],
@@ -20,44 +23,54 @@ fn main() {
     let jets = reader.lines().next().unwrap().unwrap();
 
     let piece_count = 2022;
-    let piece_count_long: usize = 1000000000000;
+    let piece_count_long: usize = 1_000_000_000_000;
 
     let mut tetris = Tetris::new();
+    // (piece_index,jet_index) -> (count,height,profile)
+    let mut visited = HashMap::<(usize,usize),(usize,usize,Profile)>::new();
+    // Option<(piece_count,growth)>
+    let mut period: Option<(usize,usize)> = None;
+
     let mut moves = jets.chars().enumerate().cycle();
-
-    let mut cy = 0;
-    let mut cx = 0;
-    let mut hy = 0;
-    let mut hx = 0;
-
-    for (c,&piece) in PIECES.iter().cycle().enumerate() {
-        if c == piece_count {
-            println!("After {c} rocks, the tower will be {} tall", tetris.height());
+    for (count, (piece_index, &piece)) in PIECES.iter().enumerate().cycle().enumerate() {
+        if count == piece_count {
+            println!("After {count} rocks, the tower will be {} tall", tetris.height());
         }
 
-        let (im, mut m) = moves.next().unwrap();
-        if c % PIECES.len() == 0 && im == 7 {
-            let h = tetris.height();
-            hx = h - hy; hy = h;
-            cx = c - cy; cy = c;
-            println!("Starting sequence after {c}/{cx} rocks, height = {h}/{hx}");
-        }
-        if cx == 1705 && hx == 2649 && (piece_count_long - c) % cx == 0 {
-            println!("Stopping sequence after {c} rocks, height = {}", tetris.height());
-            let remaining_height = (piece_count_long - c) / cx * hx;
-            println!("After {piece_count_long} rocks, the tower will be {} tall",
-                tetris.height() + remaining_height);
-            break;
+        let (jet_index, jet) = moves.next().unwrap();
+        let height = tetris.height();
+        let profile = tetris.profile();
+
+        match period {
+            Some((piece_count,growth)) => {
+                let remaining_cycles = piece_count_long - count;
+                if remaining_cycles % piece_count == 0 {
+                    println!("After {piece_count_long} rocks, the tower will be {} tall",
+                        height + (remaining_cycles / piece_count) * growth);
+                    break;
+                }
+            }
+            None => {
+                if let Some((prev_count,prev_height,prev_profile)) = visited.insert((piece_index,jet_index), (count,height,profile)) {
+                    if prev_profile == profile {
+                        period = Some((count - prev_count, height - prev_height));
+                    }
+                }
+            }
         }
 
         tetris.add(piece);
+        let mut direction = jet;
         loop {
-            tetris.push(m);
+            tetris.push(direction);
             if tetris.fall() {
                 break
             }
-            m = moves.next().unwrap().1;
+            direction = moves.next().unwrap().1;
         }
+
+        let new_profile = tetris.profile();
+        assert_ne!(profile, new_profile, "Increase the size of ProfileType");
     }
 }
 
@@ -70,10 +83,10 @@ impl Tetris {
         self.columns.iter().map(|c| c.len()).max().unwrap()
     }
 
-    pub fn add(&mut self, piece: &'static [(i64,i64)]) {
+    pub fn add(&mut self, piece: &'static [(i32,i32)]) {
         assert!(self.piece.is_none());
         self.piece = Some(piece);
-        self.pos = (2, self.height() as i64 + 3);
+        self.pos = (2, i32::try_from(self.height()).unwrap() + 3);
     }
 
     pub fn push(&mut self, dir: char) {
@@ -119,5 +132,17 @@ impl Tetris {
             }
         }
         false
+    }
+
+    pub fn profile(&self) -> Profile {
+        let height = self.height() as isize;
+        let mut profile: Profile = [0; 7];
+        for (v,p) in self.columns.iter().zip(&mut profile) {
+            for h in (height - ProfileType::BITS as isize)..height {
+                let bit = if h < 0 { true } else { *v.get(h as usize).unwrap_or(&false) };
+                *p = (*p << 1) | (bit as ProfileType);
+            }
+        }
+        profile
     }
 }
