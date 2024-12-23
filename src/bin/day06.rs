@@ -1,125 +1,142 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader};
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum Dir {
-    Up,
-    Right,
-    Down,
-    Left,
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-struct Cell(u8);
-
-impl Dir {
-    pub fn from_char(c: u8) -> Self {
-        match c {
-            b'^' => Dir::Up,
-            b'>' => Dir::Right,
-            b'v' => Dir::Down,
-            b'<' => Dir::Left,
-            _ => panic!(),
-        }
-    }
-    pub fn step(self, pos: (usize, usize)) -> Option<(usize, usize)> {
-        match self {
-            Dir::Up => Some((pos.0.checked_sub(1)?, pos.1)),
-            Dir::Right => Some((pos.0, pos.1.checked_add(1)?)),
-            Dir::Down => Some((pos.0.checked_add(1)?, pos.1)),
-            Dir::Left => Some((pos.0, pos.1.checked_sub(1)?)),
-        }
-    }
-    pub fn rotate(self) -> Self {
-        match self {
-            Dir::Up => Dir::Right,
-            Dir::Right => Dir::Down,
-            Dir::Down => Dir::Left,
-            Dir::Left => Dir::Up,
-        }
-    }
-}
-
-impl Cell {
-    pub fn free() -> Self {
-        Cell(0)
-    }
-    pub fn obstacle() -> Self {
-        Cell(1)
-    }
-    pub fn visited(dir: Dir) -> Self {
-        Cell(match dir {
-            Dir::Up => 2,
-            Dir::Right => 4,
-            Dir::Down => 8,
-            Dir::Left => 16,
-        })
-    }
-    pub fn from_char(c: u8) -> Self {
-        match c {
-            b'.' => Cell::free(),
-            b'#' => Cell::obstacle(),
-            c => Cell::visited(Dir::from_char(c)),
-        }
-    }
-}
+use std::io::{BufRead, BufReader, Read};
 
 fn main() {
-    let mut grid = Vec::new();
-    let mut pos = None;
-    for line in BufReader::new(File::open("input/day06.txt").unwrap()).lines() {
-        let line = line.unwrap().into_bytes();
-        if let Some(col) = line.iter().position(|ch| !b".#".contains(ch)) {
-            let dir = Dir::from_char(line[col]);
-            assert!(pos.is_none());
-            pos = Some((grid.len(), col, dir));
-        }
-        grid.push(line.into_iter().map(Cell::from_char).collect::<Vec<Cell>>());
-    }
-    let pos = pos.unwrap();
+    let map = read_map(File::open("input/day06.txt").unwrap());
+    let mut grid = to_grid(&map);
 
-    let (visited, _, visited_path) = walk(grid.clone(), pos);
-    println!("Day 6 part one: {visited}");
+    let (mut visited, looping) = walk(&mut grid, map.start);
+    assert!(!looping);
+    visited.sort();
+    visited.dedup();
+    println!("Day 6 part one: {}", visited.len());
 
     let mut count = 0;
-    for (r, row) in visited_path.iter().enumerate() {
-        for (c, &cell) in row.iter().enumerate() {
-            if cell != Cell::obstacle() && cell != Cell::free() && grid[r][c] == Cell::free() {
-                let mut grid = grid.clone();
-                grid[r][c] = Cell::obstacle();
-                if walk(grid, pos).1 {
-                    count += 1;
-                }
+    for (row, col) in visited {
+        if (row, col) != (map.start.0, map.start.1) {
+            set_grid(&mut grid, row, col, Cell::Obstacle);
+            let (_, looping) = walk(&mut grid, map.start);
+            if looping {
+                count += 1;
             }
+            set_grid(&mut grid, row, col, Cell::Free);
         }
     }
     println!("Day 6 part two: {count}");
 }
 
-fn walk(mut grid: Vec<Vec<Cell>>, mut pos: (usize, usize, Dir)) -> (usize, bool, Vec<Vec<Cell>>) {
-    let rows = grid.len();
-    let cols = grid[0].len();
-    let mut visited = 1;
-    loop {
-        let Some((r, c)) = pos.2.step((pos.0, pos.1)) else {
-            return (visited, false, grid);
+struct Map {
+    rows: u8,
+    cols: u8,
+    obstacles: Vec<(u8, u8)>,
+    start: (u8, u8, Dir),
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct Dir(u8);
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Cell {
+    Outside,
+    Obstacle,
+    Free,
+    Visited,
+}
+
+fn walk(grid: &mut [Cell], start: (u8, u8, Dir)) -> (Vec<(u8, u8)>, bool) {
+    let mut visited = vec![(start.0, start.1)];
+    let (mut row, mut col, mut dir) = start;
+    let is_loop = loop {
+        let next = match dir {
+            Dir::UP => (row - 1, col),
+            Dir::RIGHT => (row, col + 1),
+            Dir::DOWN => (row + 1, col),
+            Dir::LEFT => (row, col - 1),
+            _ => panic!(),
         };
-        if r >= rows || c >= cols {
-            return (visited, false, grid);
+        let idx = index(next.0, next.1, dir);
+        match &mut grid[idx] {
+            Cell::Outside => break false,
+            Cell::Visited => break true,
+            Cell::Obstacle => dir = dir.rotate(),
+            cell @ Cell::Free => {
+                *cell = Cell::Visited;
+                row = next.0;
+                col = next.1;
+                visited.push(next);
+            }
         }
-        if grid[r][c] == Cell::obstacle() {
-            pos.2 = pos.2.rotate();
-        } else {
-            pos.0 = r;
-            pos.1 = c;
+    };
+    for &(row, col) in &visited {
+        set_grid(grid, row, col, Cell::Free);
+    }
+    (visited, is_loop)
+}
+
+fn read_map(input: impl Read) -> Map {
+    let mut rows = 0;
+    let mut cols = 0;
+    let mut obstacles = vec![];
+    let mut start = None;
+    for (row, line) in (1..).zip(BufReader::new(input).lines()) {
+        let line = line.unwrap().into_bytes();
+
+        assert_eq!(rows + 1, row);
+        rows = row;
+        if cols == 0 {
+            cols = line.len().try_into().unwrap();
         }
-        let flag = Cell::visited(pos.2).0;
-        if grid[pos.0][pos.1].0 & flag != 0 {
-            return (visited, true, grid);
+        assert_eq!(usize::from(cols), line.len());
+
+        for (col, ch) in (1..).zip(&line) {
+            match ch {
+                b'.' => (),
+                b'#' => obstacles.push((row, col)),
+                b'^' => assert!(start.replace((row, col, Dir::UP)).is_none()),
+                b'>' => assert!(start.replace((row, col, Dir::RIGHT)).is_none()),
+                b'v' => assert!(start.replace((row, col, Dir::DOWN)).is_none()),
+                b'<' => assert!(start.replace((row, col, Dir::LEFT)).is_none()),
+                _ => panic!(),
+            }
         }
-        if grid[r][c] == Cell::free() {
-            visited += 1;
+    }
+    Map {
+        rows,
+        cols,
+        obstacles,
+        start: start.unwrap(),
+    }
+}
+
+fn to_grid(map: &Map) -> Vec<Cell> {
+    let mut grid = vec![Cell::Outside; 256 * 256 * 4];
+    for row in 1..=map.rows {
+        for col in 1..=map.cols {
+            set_grid(&mut grid, row, col, Cell::Free);
         }
-        grid[pos.0][pos.1].0 |= flag;
+    }
+    for &(row, col) in &map.obstacles {
+        set_grid(&mut grid, row, col, Cell::Obstacle);
+    }
+    grid
+}
+
+fn set_grid(grid: &mut [Cell], row: u8, col: u8, cell: Cell) {
+    let index = index(row, col, Dir::UP);
+    grid[index..index + 4].fill(cell);
+}
+
+fn index(row: u8, col: u8, dir: Dir) -> usize {
+    ((row as usize) << 10) + ((col as usize) << 2) + (dir.0 as usize)
+}
+
+impl Dir {
+    const UP: Dir = Dir(0);
+    const RIGHT: Dir = Dir(1);
+    const DOWN: Dir = Dir(2);
+    const LEFT: Dir = Dir(3);
+
+    fn rotate(self) -> Self {
+        Self((self.0 + 1) & 3)
     }
 }
