@@ -7,3 +7,4 @@ One branch per year:
 * `advent22`: https://adventofcode.com/2022
 * `advent23`: https://adventofcode.com/2023
 * `advent24`: https://adventofcode.com/2024
+* `advent25`: https://adventofcode.com/2025

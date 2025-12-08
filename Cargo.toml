@@ -1,6 +1,6 @@
 [package]
 name = "advent"
-version = "0.0.2024"
-edition = "2021"
+version = "0.0.2025"
+edition = "2024"
 
 [dependencies]
